@@ -1,19 +1,41 @@
+import bcrypt
 from connect import get_cursor
 
-def create_user (first_name, last_name):
+def login_user(email, password):
     conn, cursor = get_cursor()
     if not conn:
-        return False
+        return None, "Database connection failed"
     try:
-        query = "INSERT INTO users (first_name, last_name) VALUES (%s, %s)"
-        cursor.execute(query, (first_name, last_name))
-        conn.commit()
-        print("User created successfully")
-        return True
+        cursor.execute("SELECT id, first_name, last_name, password_hash FROM users WHERE email = %s ", (email,))
+        user = cursor.fetchone()
+        if not user:
+            return None, "User not found"
+
+        user_id, first_name, last_name, stored_hash = user
+
+        if bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
+            return {"id": user_id, "first_name": first_name, "last_name": last_name}, None
+        else:
+            return None, "Invalid password"
     except Exception as e:
-        print(f"Error creating user: {e}")
+        return None, str(e)
+    finally:
+        cursor.close()
+        conn.close()
+
+def create_user (first_name, last_name, email, password):
+    conn, cursor = get_cursor()
+    if not conn:
+        return False, "Database connection failed"
+    try:
+        hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        query = "INSERT INTO users (first_name, last_name, email, password) VALUES (%s, %s, %s, %s)"
+        cursor.execute(query, (first_name, last_name, email, hashed))
+        conn.commit()
+        return True, cursor.lastrowid
+    except Exception as e:
         conn.rollback()
-        return False
+        return False, str(e)
     finally:
         cursor.close()
         conn.close()

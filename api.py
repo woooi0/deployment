@@ -3,7 +3,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-from models import create_user, add_product, get_products, get_top_products
+from models import login_user, create_user, add_product, get_products, get_top_products
 from services import place_order
 
 def format_products(products):
@@ -13,6 +13,33 @@ def format_products(products):
         "price": float(p[2]),
         "stock": p[3]
     } for p in products]
+
+@app.route("/register", methods = ["POST"])
+def register():
+    data = request.json
+    required = ["first_name", "last_name", "email", "password"]
+    for field in required:
+        if field not in data:
+            return jsonify({"error": f"Missing {field}"}), 400
+
+    success, result = create_user(data["first_name"], data["last_name"], data["email"], data["password"])
+    if success:
+        return jsonify({"message": "User registered", "user_id": result}), 201
+    else:
+        return jsonify({"error": result}), 400
+
+@app.route("/login", methods = ["POST"])
+def login():
+    data = request.json
+    if not data.get("email") or not data.get("password"):
+        return jsonify({"error": "email and password required"}), 400
+
+    user, error = login_user(data["email"], data["password"])
+    if user:
+        return jsonify({"message": "Login successful", "user_id": user}), 200
+    else:
+        return jsonify({"error": error}), 401
+
 @app.route("/")
 def home():
     return "API is running 😁👌"
@@ -21,7 +48,7 @@ def home():
 def add_user():
     try:
         data = request.json
-        success = create_user(data["first_name"], data["last_name"])
+        success = create_user(data["first_name"], data["last_name"], data["email"], data["password"])
         if success:
             return jsonify({"message" : "User created successfully"}), 201
         else:

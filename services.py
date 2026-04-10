@@ -15,7 +15,7 @@ def place_order(user_id, items):
         for item in items:
             product_id = item['product_id']
             qty = item['quantity']
-            print(f" Checking product {product_id} with qty {qty}")
+            print(f"Checking product {product_id} with qty {qty}")
 
             cursor.execute("SELECT stock, price FROM products WHERE id = %s", (product_id,))
             result = cursor.fetchone()
